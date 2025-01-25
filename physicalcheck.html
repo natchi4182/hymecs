@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>肩関節可動域計測</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .input-section {
+            text-align: center;
+        }
+        .result {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>肩関節可動域計測フォーム</h1>
+    <div class="container">
+        <div class="input-section">
+            <label for="right-shoulder">右肩の可動域 (°):</label><br>
+            <input type="number" id="right-shoulder-value" value="90" min="0" max="180" oninput="syncSlider('right')">
+            <input type="range" id="right-shoulder-slider" value="90" min="0" max="180" oninput="syncValue('right')">
+        </div>
+        <div class="input-section">
+            <label for="left-shoulder">左肩の可動域 (°):</label><br>
+            <input type="number" id="left-shoulder-value" value="90" min="0" max="180" oninput="syncSlider('left')">
+            <input type="range" id="left-shoulder-slider" value="90" min="0" max="180" oninput="syncValue('left')">
+        </div>
+    </div>
+    <div class="result" id="difference-display">差分: 0°</div>
+
+    <script>
+        function syncSlider(side) {
+            const value = document.getElementById(`${side}-shoulder-value`).value;
+            document.getElementById(`${side}-shoulder-slider`).value = value;
+            calculateDifference();
+        }
+
+        function syncValue(side) {
+            const slider = document.getElementById(`${side}-shoulder-slider`).value;
+            document.getElementById(`${side}-shoulder-value`).value = slider;
+            calculateDifference();
+        }
+
+        function calculateDifference() {
+            const rightValue = parseInt(document.getElementById("right-shoulder-value").value, 10);
+            const leftValue = parseInt(document.getElementById("left-shoulder-value").value, 10);
+            const difference = Math.abs(rightValue - leftValue);
+
+            const display = document.getElementById("difference-display");
+            display.textContent = `差分: ${difference}°`;
+
+            if (difference === 0) {
+                display.style.color = "green";
+            } else if (difference <= 10) {
+                display.style.color = "orange";
+            } else {
+                display.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>
