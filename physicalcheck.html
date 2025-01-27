@@ -3,82 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>肩関節可動域計測</title>
+    <title>理学所見チェックシート</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
         }
+        fieldset {
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
         .container {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
         }
         .input-section {
             text-align: center;
             flex: 1;
+            min-width: 200px;
+        }
+        input[type="number"], input[type="text"] {
+            width: 80%;
+            font-size: 16px;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        input[type="range"] {
+            width: 90%;
         }
         .result {
             text-align: center;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             margin-top: 20px;
+        }
+        label {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .input-section {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>肩関節可動域計測フォーム</h1>
-    <div class="container">
-        <div class="input-section">
-            <label for="right-shoulder">右肩の可動域 (°):</label><br>
-            <input type="number" id="right-shoulder-value" value="90" min="0" max="180" oninput="syncSlider('right')"><br>
-            <input type="range" id="right-shoulder-slider" value="90" min="0" max="180" oninput="syncValue('right')">
+    <h1>理学所見チェックシート</h1>
+
+    <!-- 受付番号入力 -->
+    <fieldset>
+        <legend>受付番号</legend>
+        <input type="text" id="reception-number" placeholder="受付番号を入力">
+        <button onclick="searchPlayer()">検索</button>
+        <div id="player-info" style="margin-top: 10px; font-weight: bold;"></div>
+    </fieldset>
+
+    <!-- 大殿筋テスト -->
+    <fieldset>
+        <legend>大殿筋テスト</legend>
+        <div class="container">
+            <div class="input-section">
+                <label>左</label>
+                <label><input type="radio" name="left-glute" value="-"> マイナス</label>
+                <label><input type="radio" name="left-glute" value="+"> プラス</label>
+            </div>
+            <div class="input-section">
+                <label>右</label>
+                <label><input type="radio" name="right-glute" value="-"> マイナス</label>
+                <label><input type="radio" name="right-glute" value="+"> プラス</label>
+            </div>
         </div>
-        <div class="input-section">
-            <label for="left-shoulder">左肩の可動域 (°):</label><br>
-            <input type="number" id="left-shoulder-value" value="90" min="0" max="180" oninput="syncSlider('left')"><br>
-            <input type="range" id="left-shoulder-slider" value="90" min="0" max="180" oninput="syncValue('left')">
-        </div>
-    </div>
-    <div class="result" id="comparison-display"></div>
-    <div class="result" id="difference-display"></div>
+        <div>腰椎・仙骨上部を直立位保持不可なら陽性</div>
+        <div class="result" id="glute-result"></div>
+    </fieldset>
+
+    <!-- FFD（指床間距離） -->
+    <fieldset>
+        <legend>FFD（指床間距離）</legend>
+        <label for="ffd">測定値 (cm)</label>
+        <input type="number" id="ffd-value" value="0" min="-30" max="30" oninput="syncSliderFFD()">
+        <input type="range" id="ffd-slider" value="0" min="-30" max="30" oninput="syncValueFFD()">
+        <div>床に届かない場合を-○○cmとする</div>
+        <div class="result" id="ffd-result"></div>
+    </fieldset>
+
+    <!-- 軸脚片脚バランス -->
+    <fieldset>
+        <legend>軸脚片脚バランス</legend>
+        <label for="balance">3回中<input type="number" id="balance" value="0" min="0" max="3">回不可</label>
+        <div>安定した90°片脚立位が3秒間可能</div>
+        <div class="result" id="balance-result"></div>
+    </fieldset>
+
+    <!-- 検査者選択 -->
+    <fieldset>
+        <legend>検査者</legend>
+        <select id="examiner">
+            <option value="">検査者を選択</option>
+        </select>
+    </fieldset>
+
+    <!-- 送信ボタン -->
+    <button onclick="submitData()">送信</button>
 
     <script>
-        function syncSlider(side) {
-            const value = document.getElementById(`${side}-shoulder-value`).value;
-            document.getElementById(`${side}-shoulder-slider`).value = value;
-            calculateDifference();
+        const playerSpreadsheetId = "14yNb2C8lD1DdGDbRTulmy3_UXuCK0ePRxOpOJQp4G2A";
+        const playerSheetName = "2025";
+        const examinerSpreadsheetId = "1FVBnoxuJzToCYN-7JuF7-tjWLbiZXIky_7lnIXr-2BI";
+        const examinerSheetName = "PTOT";
+
+        function searchPlayer() {
+            const receptionNumber = document.getElementById('reception-number').value;
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}?key=YOUR_API_KEY`)
+                .then(response => response.json())
+                .then(data => {
+                    const rows = data.values;
+                    const player = rows.find(row => row[0] === receptionNumber);
+                    if (player) {
+                        document.getElementById('player-info').textContent = `選手氏名: ${player[1]}, 投球側: ${player[2]}`;
+                    } else {
+                        document.getElementById('player-info').textContent = "選手が見つかりません。";
+                    }
+                });
         }
 
-        function syncValue(side) {
-            const slider = document.getElementById(`${side}-shoulder-slider`).value;
-            document.getElementById(`${side}-shoulder-value`).value = slider;
-            calculateDifference();
+        function loadExaminers() {
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${examinerSpreadsheetId}/values/${examinerSheetName}?key=YOUR_API_KEY`)
+                .then(response => response.json())
+                .then(data => {
+                    const rows = data.values;
+                    const examinerSelect = document.getElementById('examiner');
+                    rows.forEach(row => {
+                        const option = document.createElement('option');
+                        option.value = row[0];
+                        option.textContent = row[0];
+                        examinerSelect.appendChild(option);
+                    });
+                });
         }
 
-        function calculateDifference() {
-            const rightValue = parseInt(document.getElementById("right-shoulder-value").value, 10);
-            const leftValue = parseInt(document.getElementById("left-shoulder-value").value, 10);
-            const difference = Math.abs(rightValue - leftValue);
-            const comparisonDisplay = document.getElementById("comparison-display");
-            const differenceDisplay = document.getElementById("difference-display");
-
-            if (rightValue > leftValue) {
-                comparisonDisplay.textContent = "右 > 左";
-                comparisonDisplay.style.color = "rose";
-                differenceDisplay.style.color = "rose";
-            } else if (rightValue < leftValue) {
-                comparisonDisplay.textContent = "右 < 左";
-                comparisonDisplay.style.color = "lime";
-                differenceDisplay.style.color = "lime";
-            } else {
-                comparisonDisplay.textContent = "右 = 左";
-                comparisonDisplay.style.color = "blue";
-                differenceDisplay.style.color = "blue";
-            }
-
-            differenceDisplay.textContent = `差分: ${difference}°`;
+        function syncSliderFFD() {
+            const value = document.getElementById('ffd-value').value;
+            document.getElementById('ffd-slider').value = value;
+            calculateFFD();
         }
+
+        function syncValueFFD() {
+            const slider = document.getElementById('ffd-slider').value;
+            document.getElementById('ffd-value').value = slider;
+            calculateFFD();
+        }
+
+        function calculateFFD() {
+            const ffd = parseInt(document.getElementById('ffd-value').value, 10);
+            const result = ffd < 0 ? "B+" : "-";
+            document.getElementById('ffd-result').textContent = `判定: ${result}`;
+        }
+
+        function submitData() {
+            const receptionNumber = document.getElementById('reception-number').value;
+            const examiner = document.getElementById('examiner').value;
+            const data = {
+                receptionNumber,
+                examiner,
+                gluteResult: document.querySelector('input[name="left-glute"]:checked')?.value + document.querySelector('input[name="right-glute"]:checked')?.value,
+                ffd: document.getElementById('ffd-value').value,
+                balance: document.getElementById('balance').value
+            };
+
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}:append?valueInputOption=RAW&key=YOUR_API_KEY`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    values: [Object.values(data)]
+                })
+            }).then(() => {
+                alert("データが送信されました！");
+            });
+        }
+
+        loadExaminers();
     </script>
 </body>
 </html>
