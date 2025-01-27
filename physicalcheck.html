@@ -169,16 +169,39 @@
             document.getElementById('ffd-result').textContent = `判定: ${result}`;
         }
 
+        function calculateGluteResult() {
+            const left = document.querySelector('input[name="left-glute"]:checked')?.value;
+            const right = document.querySelector('input[name="right-glute"]:checked')?.value;
+            const result = (left === '+' || right === '+') ? "B+" : "-";
+            document.getElementById('glute-result').textContent = `判定: ${result}`;
+        }
+
+        function calculateBalanceResult() {
+            const balance = parseInt(document.getElementById('balance').value, 10);
+            const result = (balance >= 2) ? "C+" : "-";
+            document.getElementById('balance-result').textContent = `判定: ${result}`;
+        }
+
+        document.querySelectorAll('input[name="left-glute"], input[name="right-glute"]').forEach(input => {
+            input.addEventListener('change', calculateGluteResult);
+        });
+
+        document.getElementById('balance').addEventListener('input', calculateBalanceResult);
+
         function submitData() {
             const receptionNumber = document.getElementById('reception-number').value;
             const examiner = document.getElementById('examiner').value;
-            const data = {
+            const gluteResult = document.getElementById('glute-result').textContent.split(': ')[1];
+            const ffd = document.getElementById('ffd-value').value;
+            const balanceResult = document.getElementById('balance-result').textContent.split(': ')[1];
+
+            const data = [
                 receptionNumber,
                 examiner,
-                gluteResult: document.querySelector('input[name="left-glute"]:checked')?.value + document.querySelector('input[name="right-glute"]:checked')?.value,
-                ffd: document.getElementById('ffd-value').value,
-                balance: document.getElementById('balance').value
-            };
+                gluteResult,
+                ffd,
+                balanceResult
+            ];
 
             fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}:append?valueInputOption=RAW&key=AIzaSyA-aOaP-qu_tGbcnWe1iTELbWvbxeTPX6c`, {
                 method: 'POST',
@@ -186,7 +209,7 @@
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    values: [Object.values(data)]
+                    values: [data]
                 })
             }).then(() => {
                 alert("データが送信されました！");
