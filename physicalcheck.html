@@ -123,7 +123,7 @@
 
         function searchPlayer() {
             const receptionNumber = document.getElementById('reception-number').value;
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}?key=YOUR_API_KEY`)
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}?key=AIzaSyA-aOaP-qu_tGbcnWe1iTELbWvbxeTPX6c`)
                 .then(response => response.json())
                 .then(data => {
                     const rows = data.values;
@@ -137,7 +137,7 @@
         }
 
         function loadExaminers() {
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${examinerSpreadsheetId}/values/${examinerSheetName}?key=YOUR_API_KEY`)
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${examinerSpreadsheetId}/values/${examinerSheetName}?key=AIzaSyA-aOaP-qu_tGbcnWe1iTELbWvbxeTPX6c`)
                 .then(response => response.json())
                 .then(data => {
                     const rows = data.values;
@@ -180,7 +180,7 @@
                 balance: document.getElementById('balance').value
             };
 
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}:append?valueInputOption=RAW&key=YOUR_API_KEY`, {
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}:append?valueInputOption=RAW&key=AIzaSyA-aOaP-qu_tGbcnWe1iTELbWvbxeTPX6c`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
