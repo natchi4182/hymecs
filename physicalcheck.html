@@ -116,102 +116,50 @@
     <button onclick="submitData()">送信</button>
 
     <script>
-    const playerSpreadsheetId = "14yNb2C8lD1DdGDbRTulmy3_UXuCK0ePRxOpOJQp4G2A";
-    const playerSheetName = "2025";
-    const examinerSpreadsheetId = "1FVBnoxuJzToCYN-7JuF7-tjWLbiZXIky_7lnIXr-2BI";
-    const examinerSheetName = "PTOT";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
 
-    async function fetchSheetData(spreadsheetId, sheetName) {
-        const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}?key=YOUR_API_KEY`);
-        const data = await response.json();
-        return data.values; // スプレッドシートのデータ
-    }
+        // プレイヤーを検索
+        async function searchPlayer() {
+            const receptionNumber = document.getElementById('reception-number').value;
 
-    async function searchPlayer() {
-        const receptionNumber = document.getElementById('reception-number').value;
-        const rows = await fetchSheetData(playerSpreadsheetId, playerSheetName);
+            const response = await fetch(`${GAS_URL}?action=search&receptionNumber=${receptionNumber}`);
+            const result = await response.json();
 
-        if (!rows || rows.length < 1) {
-            document.getElementById('player-info').textContent = "データが見つかりません。";
-            return;
-        }
-
-        const headers = rows[0]; // 1行目を取得（ヘッダー）
-        const receptionIndex = headers.indexOf("受付番号");
-        const nameIndex = headers.indexOf("選手氏名");
-        const sideIndex = headers.indexOf("投球側");
-
-        if (receptionIndex === -1 || nameIndex === -1 || sideIndex === -1) {
-            document.getElementById('player-info').textContent = "スプレッドシートの形式が正しくありません。";
-            return;
-        }
-
-        const player = rows.find(row => row[receptionIndex] === receptionNumber);
-        if (player) {
-            document.getElementById('player-info').textContent = `選手氏名: ${player[nameIndex]}, 投球側: ${player[sideIndex]}`;
-        } else {
-            document.getElementById('player-info').textContent = "選手が見つかりません。";
-        }
-    }
-
-    async function submitData() {
-        const rows = await fetchSheetData(playerSpreadsheetId, playerSheetName);
-
-        if (!rows || rows.length < 1) {
-            alert("スプレッドシートのデータ形式が正しくありません。");
-            return;
-        }
-
-        const headers = rows[0]; // 1行目を取得（ヘッダー）
-        const data = {
-            "受付番号": document.getElementById('reception-number').value,
-            "検査者": document.getElementById('examiner').value,
-            "大殿筋テスト結果": document.getElementById('glute-result').textContent.split(': ')[1],
-            "FFD結果": document.getElementById('ffd-value').value,
-            "軸脚片脚バランス結果": document.getElementById('balance-result').textContent.split(': ')[1]
-        };
-
-        // ヘッダー順にデータを並び替え
-        const rowData = headers.map(header => data[header] || "");
-
-        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}:append?valueInputOption=RAW&key=YOUR_API_KEY`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                values: [rowData]
-            })
-        }).then(() => {
-            alert("データが送信されました！");
-        });
-    }
-
-    async function loadExaminers() {
-        const rows = await fetchSheetData(examinerSpreadsheetId, examinerSheetName);
-
-        if (!rows || rows.length < 1) return;
-
-        const headers = rows[0];
-        const examinerIndex = headers.indexOf("検査者");
-
-        if (examinerIndex === -1) return;
-
-        const examinerSelect = document.getElementById('examiner');
-        rows.slice(1).forEach(row => {
-            const examinerName = row[examinerIndex];
-            if (examinerName) {
-                const option = document.createElement('option');
-                option.value = examinerName;
-                option.textContent = examinerName;
-                examinerSelect.appendChild(option);
+            if (result.status === "success") {
+                document.getElementById('player-info').textContent = `選手氏名: ${result.data.name}, 投球側: ${result.data.side}`;
+            } else if (result.status === "not_found") {
+                document.getElementById('player-info').textContent = result.message;
+            } else {
+                document.getElementById('player-info').textContent = "エラーが発生しました。";
             }
-        });
-    }
+        }
 
-    loadExaminers();
-    </script>
+        // データを送信
+        async function submitData() {
+            const receptionNumber = document.getElementById('reception-number').value;
+            const examiner = document.getElementById('examiner').value;
+            const gluteResult = document.getElementById('glute-result').textContent.split(': ')[1];
+            const ffd = document.getElementById('ffd-value').value;
+            const balanceResult = document.getElementById('balance-result').textContent.split(': ')[1];
 
+            const rowData = [
+                receptionNumber,
+                examiner,
+                gluteResult,
+                ffd,
+                balanceResult
+            ];
+
+            const response = await fetch(`${GAS_URL}?action=submit&rowData=${encodeURIComponent(JSON.stringify(rowData))}`);
+            const result = await response.json();
+
+            if (result.status === "success") {
+                alert(result.message);
+            } else {
+                alert("データ送信中にエラーが発生しました。");
+            }
+        }
+        </script>
 
 </body>
 </html>
