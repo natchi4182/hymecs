@@ -116,107 +116,102 @@
     <button onclick="submitData()">送信</button>
 
     <script>
-        const playerSpreadsheetId = "14yNb2C8lD1DdGDbRTulmy3_UXuCK0ePRxOpOJQp4G2A";
-        const playerSheetName = "2025";
-        const examinerSpreadsheetId = "1FVBnoxuJzToCYN-7JuF7-tjWLbiZXIky_7lnIXr-2BI";
-        const examinerSheetName = "PTOT";
+    const playerSpreadsheetId = "14yNb2C8lD1DdGDbRTulmy3_UXuCK0ePRxOpOJQp4G2A";
+    const playerSheetName = "2025";
+    const examinerSpreadsheetId = "1FVBnoxuJzToCYN-7JuF7-tjWLbiZXIky_7lnIXr-2BI";
+    const examinerSheetName = "PTOT";
 
-        function searchPlayer() {
-            const receptionNumber = document.getElementById('reception-number').value;
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}?key=AIzaSyA-aOaP-qu_tGbcnWe1iTELbWvbxeTPX6c`)
-                .then(response => response.json())
-                .then(data => {
-                    const rows = data.values;
-                    const player = rows.find(row => row[0] === receptionNumber);
-                    if (player) {
-                        document.getElementById('player-info').textContent = `選手氏名: ${player[1]}, 投球側: ${player[2]}`;
-                    } else {
-                        document.getElementById('player-info').textContent = "選手が見つかりません。";
-                    }
-                });
+    async function fetchSheetData(spreadsheetId, sheetName) {
+        const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}?key=YOUR_API_KEY`);
+        const data = await response.json();
+        return data.values; // スプレッドシートのデータ
+    }
+
+    async function searchPlayer() {
+        const receptionNumber = document.getElementById('reception-number').value;
+        const rows = await fetchSheetData(playerSpreadsheetId, playerSheetName);
+
+        if (!rows || rows.length < 1) {
+            document.getElementById('player-info').textContent = "データが見つかりません。";
+            return;
         }
 
-        function loadExaminers() {
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${examinerSpreadsheetId}/values/${examinerSheetName}?key=AIzaSyA-aOaP-qu_tGbcnWe1iTELbWvbxeTPX6c`)
-                .then(response => response.json())
-                .then(data => {
-                    const rows = data.values;
-                    const examinerSelect = document.getElementById('examiner');
-                    rows.forEach(row => {
-                        const option = document.createElement('option');
-                        option.value = row[0];
-                        option.textContent = row[0];
-                        examinerSelect.appendChild(option);
-                    });
-                });
+        const headers = rows[0]; // 1行目を取得（ヘッダー）
+        const receptionIndex = headers.indexOf("受付番号");
+        const nameIndex = headers.indexOf("選手氏名");
+        const sideIndex = headers.indexOf("投球側");
+
+        if (receptionIndex === -1 || nameIndex === -1 || sideIndex === -1) {
+            document.getElementById('player-info').textContent = "スプレッドシートの形式が正しくありません。";
+            return;
         }
 
-        function syncSliderFFD() {
-            const value = document.getElementById('ffd-value').value;
-            document.getElementById('ffd-slider').value = value;
-            calculateFFD();
+        const player = rows.find(row => row[receptionIndex] === receptionNumber);
+        if (player) {
+            document.getElementById('player-info').textContent = `選手氏名: ${player[nameIndex]}, 投球側: ${player[sideIndex]}`;
+        } else {
+            document.getElementById('player-info').textContent = "選手が見つかりません。";
+        }
+    }
+
+    async function submitData() {
+        const rows = await fetchSheetData(playerSpreadsheetId, playerSheetName);
+
+        if (!rows || rows.length < 1) {
+            alert("スプレッドシートのデータ形式が正しくありません。");
+            return;
         }
 
-        function syncValueFFD() {
-            const slider = document.getElementById('ffd-slider').value;
-            document.getElementById('ffd-value').value = slider;
-            calculateFFD();
-        }
+        const headers = rows[0]; // 1行目を取得（ヘッダー）
+        const data = {
+            "受付番号": document.getElementById('reception-number').value,
+            "検査者": document.getElementById('examiner').value,
+            "大殿筋テスト結果": document.getElementById('glute-result').textContent.split(': ')[1],
+            "FFD結果": document.getElementById('ffd-value').value,
+            "軸脚片脚バランス結果": document.getElementById('balance-result').textContent.split(': ')[1]
+        };
 
-        function calculateFFD() {
-            const ffd = parseInt(document.getElementById('ffd-value').value, 10);
-            const result = ffd < 0 ? "B+" : "-";
-            document.getElementById('ffd-result').textContent = `判定: ${result}`;
-        }
+        // ヘッダー順にデータを並び替え
+        const rowData = headers.map(header => data[header] || "");
 
-        function calculateGluteResult() {
-            const left = document.querySelector('input[name="left-glute"]:checked')?.value;
-            const right = document.querySelector('input[name="right-glute"]:checked')?.value;
-            const result = (left === '+' || right === '+') ? "B+" : "-";
-            document.getElementById('glute-result').textContent = `判定: ${result}`;
-        }
-
-        function calculateBalanceResult() {
-            const balance = parseInt(document.getElementById('balance').value, 10);
-            const result = (balance >= 2) ? "C+" : "-";
-            document.getElementById('balance-result').textContent = `判定: ${result}`;
-        }
-
-        document.querySelectorAll('input[name="left-glute"], input[name="right-glute"]').forEach(input => {
-            input.addEventListener('change', calculateGluteResult);
+        fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}:append?valueInputOption=RAW&key=YOUR_API_KEY`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                values: [rowData]
+            })
+        }).then(() => {
+            alert("データが送信されました！");
         });
+    }
 
-        document.getElementById('balance').addEventListener('input', calculateBalanceResult);
+    async function loadExaminers() {
+        const rows = await fetchSheetData(examinerSpreadsheetId, examinerSheetName);
 
-        function submitData() {
-            const receptionNumber = document.getElementById('reception-number').value;
-            const examiner = document.getElementById('examiner').value;
-            const gluteResult = document.getElementById('glute-result').textContent.split(': ')[1];
-            const ffd = document.getElementById('ffd-value').value;
-            const balanceResult = document.getElementById('balance-result').textContent.split(': ')[1];
+        if (!rows || rows.length < 1) return;
 
-            const data = [
-                receptionNumber,
-                examiner,
-                gluteResult,
-                ffd,
-                balanceResult
-            ];
+        const headers = rows[0];
+        const examinerIndex = headers.indexOf("検査者");
 
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${playerSpreadsheetId}/values/${playerSheetName}:append?valueInputOption=RAW&key=AIzaSyA-aOaP-qu_tGbcnWe1iTELbWvbxeTPX6c`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    values: [data]
-                })
-            }).then(() => {
-                alert("データが送信されました！");
-            });
-        }
+        if (examinerIndex === -1) return;
 
-        loadExaminers();
+        const examinerSelect = document.getElementById('examiner');
+        rows.slice(1).forEach(row => {
+            const examinerName = row[examinerIndex];
+            if (examinerName) {
+                const option = document.createElement('option');
+                option.value = examinerName;
+                option.textContent = examinerName;
+                examinerSelect.appendChild(option);
+            }
+        });
+    }
+
+    loadExaminers();
     </script>
+
+
 </body>
 </html>
