@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRコードスキャン・フォーム</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: inline-block; width: 80px; }
+    input { padding: 5px; }
+    button { padding: 10px; margin: 5px 0; }
+    .booth-button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+  <!-- html5-qrcodeライブラリの読み込み -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+  <h2>QRコードスキャンフォーム</h2>
+  
+  <div class="form-group">
+    <label for="idInput">ID:</label>
+    <input type="text" id="idInput" readonly>
+  </div>
+  <div class="form-group">
+    <label for="nameInput">氏名:</label>
+    <input type="text" id="nameInput" readonly>
+  </div>
+  <div class="form-group">
+    <label for="genderInput">性別:</label>
+    <input type="text" id="genderInput" readonly>
+  </div>
+  <div class="form-group">
+    <label for="ageInput">年齢:</label>
+    <input type="text" id="ageInput" readonly>
+  </div>
+  
+  <button id="scanButton">QRコードスキャン</button>
+  
+  <!-- QRコードスキャン用のエリア（初期は非表示） -->
+  <div id="qr-reader" style="width:300px; display:none;"></div>
+  
+  <hr>
+  <h3>ブースチェック</h3>
+  <button class="booth-button" id="booth1" onclick="goToBooth('診察')">診察</button>
+  <button class="booth-button" id="booth2" onclick="goToBooth('エコー')">エコー</button>
+  <button class="booth-button" id="booth3" onclick="goToBooth('理学所見')">理学所見</button>
+  <button class="booth-button" id="booth4" onclick="goToBooth('結果説明')">結果説明</button>
+  
+  <script>
+    let html5QrcodeScanner; // html5-qrcodeオブジェクト
+
+    document.getElementById('scanButton').addEventListener('click', function() {
+      document.getElementById('qr-reader').style.display = 'block';
+      startScanner();
+    });
+
+    function startScanner() {
+      const qrReaderElem = document.getElementById('qr-reader');
+      // すでに初期化済みの場合は再初期化しない
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5Qrcode("qr-reader");
+      }
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: 250
+        },
+        qrCodeMessage => {
+          // QRコードの読み取り成功時の処理
+          console.log("QRコード検出: " + qrCodeMessage);
+          processQRCode(qrCodeMessage);
+          // 読み取り後はカメラを停止してエリアを非表示
+          html5QrcodeScanner.stop().then(() => {
+            qrReaderElem.style.display = 'none';
+          }).catch(err => {
+            console.error("QRスキャナ停止エラー:", err);
+          });
+        },
+        errorMessage => {
+          // スキャンエラーはコンソールに出力（必要に応じて処理追加）
+          console.log("スキャンエラー: " + errorMessage);
+        }
+      ).catch(err => {
+        console.error("スキャン開始エラー:", err);
+      });
+    }
+
+    // QRコードのデータ（JSON形式：{ id, name, gender, dob }）を処理して入力欄へセット
+    function processQRCode(data) {
+      try {
+        const qrData = JSON.parse(data);
+        document.getElementById('idInput').value = qrData.id || "";
+        document.getElementById('nameInput').value = qrData.name || "";
+        document.getElementById('genderInput').value = qrData.gender || "";
+        if (qrData.dob) {
+          const age = calculateAge(qrData.dob);
+          document.getElementById('ageInput').value = age;
+        }
+      } catch(e) {
+        console.error("QRコードのデータ処理エラー:", e);
+      }
+    }
+
+    // 生年月日（YYYY-MM-DD）から年齢を計算
+    function calculateAge(dob) {
+      const birthDate = new Date(dob);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    }
+
+    // 各ブースのボタンを押した際の処理（後日各画面へ切替処理を実装）
+    function goToBooth(boothName) {
+      // 診察，エコー，理学所見はデータ入力画面へ
+      // 結果説明は結果表示画面へ切り替える（ここでは仮にalertで代用）
+      alert(boothName + " の画面に切り替えます");
+    }
+
+    // Google Spreadsheetから取得したデータに基づき、各ブースの状態を更新する関数
+    function updateBoothStatus(spreadsheetData) {
+      // spreadsheetDataは例として各ブースの入力状態を示すオブジェクト
+      // 例: { '診察': true/false, 'エコー': true/false, '理学所見': true/false }
+      const booths = ['診察', 'エコー', '理学所見'];
+      booths.forEach((booth, index) => {
+        const btn = document.getElementById('booth' + (index + 1));
+        if (spreadsheetData[booth]) {
+          btn.innerHTML = "✓ " + booth;
+          btn.style.backgroundColor = "#D3D3D3"; // 入力済みなら淡いグレー
+          btn.style.color = "#000000";
+        } else {
+          btn.innerHTML = booth;
+          btn.style.backgroundColor = "#000000"; // 未入力なら黒
+          btn.style.color = "#FFFFFF"; // 見やすさのため文字色は白
+        }
+      });
+      
+      // 結果説明のボタンは、診察・エコー・理学所見全てが入力済みなら濃い赤、そうでなければ薄い黄色
+      const examComplete = spreadsheetData['診察'];
+      const echoComplete = spreadsheetData['エコー'];
+      const physicalComplete = spreadsheetData['理学所見'];
+      const booth4 = document.getElementById('booth4');
+      if (examComplete && echoComplete && physicalComplete) {
+        booth4.style.backgroundColor = "#8B0000"; // 濃い赤
+        booth4.style.color = "#FFFFFF";
+      } else {
+        booth4.style.backgroundColor = "#FFFFE0"; // 薄い黄色
+        booth4.style.color = "#000000";
+      }
+    }
+
+    // 現段階ではダミーデータでブースの状態を更新
+    const dummySpreadsheetData = {
+      '診察': false,
+      'エコー': true,
+      '理学所見': false
+      // '結果説明'は他ブースの状態により表示色を変えるので、直接は設定しません
+    };
+    updateBoothStatus(dummySpreadsheetData);
+  </script>
+</body>
+</html>
